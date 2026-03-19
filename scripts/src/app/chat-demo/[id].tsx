@@ -3,18 +3,21 @@
 // - Dùng chung cho cả 1-1 và group: tuỳ thuộc tham số truyền vào (name, members, online)
 // - Dữ liệu tin nhắn hiện tại là mock (lưu trong state), chỉ để demo UI và logic cơ bản (chưa gọi API).
 
-import React, { useMemo, useState } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useMemo, useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   FlatList,
-  TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
 } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { pollApi } from "../lib/api.service";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Kiểu dữ liệu cho 1 option trong bình chọn (poll)
 // Ví dụ 1 option: "Tomorrow morning" với số lượng vote tương ứng.
@@ -131,8 +134,66 @@ const ChatDetailScreen: React.FC = () => {
     online?: string;
   }>();
 
-  // State chứa danh sách tin nhắn hiện tại (mock + tin nhắn/poll do user gửi trong phiên)
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  // State chứa danh sách tin nhắn hiện tại (fetch từ API + tin nhắn mới)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+
+  // Fetch dữ liệu từ API khi màn hình được load lần đầu
+  useEffect(() => {
+    loadInitialData();
+  }, [id]);
+
+  /**
+   * Hàm khởi tạo: Lấy định danh người dùng và tải danh sách poll từ MongoDB
+   */
+  const loadInitialData = async () => {
+    try {
+      setIsLoading(true);
+
+      // (1) Quản lý định danh: Lấy userId từ bộ nhớ máy (AsyncStorage)
+      let storedUserId = await AsyncStorage.getItem("userId");
+      if (!storedUserId) {
+        // Nếu chưa có, tạo một ID tạm thời cho thiết bị này
+        storedUserId = "user_" + Math.random().toString(36).substr(2, 9);
+        await AsyncStorage.setItem("userId", storedUserId);
+      }
+      setUserId(storedUserId);
+
+      // (2) Tải dữ liệu: Lấy danh sách các cuộc bình chọn của phòng chat này (id)
+      const response = await pollApi.getPollsByChat(id || "default");
+      const polls = response.data;
+
+      // (3) Chuyển đổi dữ liệu từ Backend sang định dạng giao diện hiển thị (Message)
+      const pollMessages: Message[] = polls.map((p: any) => ({
+        id: p._id,
+        text: "",
+        createdAt: new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isMe: p.createdBy === storedUserId,
+        senderName: p.createdBy === storedUserId ? "You" : "User",
+        poll: {
+          question: p.question,
+          options: p.options.map((opt: any) => ({
+            id: opt._id, // ID của phương án do backend quản lý
+            text: opt.text,
+            votes: opt.votes,
+            // Kiểm tra xem người dùng hiện tại đã từng vote cho phương án này chưa
+            votedByMe: p.votesByUser && p.votesByUser[storedUserId!]?.includes(opt._id),
+          })),
+          allowMulti: p.allowMultiSelect,
+          closed: p.isClosed,
+        },
+      }));
+
+      // Cập nhật trạng thái hiển thị (không dùng dữ liệu giả MOCK_MESSAGES để đảm bảo thực tế)
+      setMessages(pollMessages);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu từ API:", error);
+      setMessages([]); // Nếu lỗi, hiển thị màn hình trống
+    } finally {
+      setIsLoading(false); // Kết thúc trạng thái đang tải
+    }
+  };
 
   // State chứa nội dung đang nhập trong ô TextInput (gửi tin nhắn text bình thường)
   const [inputValue, setInputValue] = useState("");
@@ -189,73 +250,102 @@ const ChatDetailScreen: React.FC = () => {
   // - Trong poll đó, map lại từng option:
   //   + Nếu là option được bấm -> toggle trạng thái votedByMe và cộng/trừ 1 vote.
   //   + Nếu poll không cho chọn nhiều (allowMulti = false) thì bỏ chọn các option khác.
-  const handleVote = (messageId: string, optionId: string) => {
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.id !== messageId || !msg.poll || msg.poll.closed) return msg;
+  /**
+   * Hàm xử lý khi người dùng nhấn bình chọn (Vote) một phương án
+   */
+  const handleVote = async (messageId: string, optionId: string) => {
+    try {
+      // Gửi yêu cầu vote lên server
+      const response = await pollApi.vote(messageId, {
+        userId: userId,
+        optionIds: [optionId],
+      });
 
-        const allowMulti = msg.poll.allowMulti;
-        const updatedOptions = msg.poll.options.map((opt) => {
-          if (opt.id !== optionId) {
-            // Nếu không cho chọn nhiều, bỏ chọn các option khác
-            return allowMulti
-              ? opt
-              : { ...opt, votedByMe: false, votes: opt.votedByMe ? Math.max(opt.votes - 1, 0) : opt.votes };
-          }
+      // Lấy lại thông tin Poll đã được cập nhật từ Server (số vote mới, trạng thái mới)
+      const updatedPoll = response.data;
 
-          const alreadyVoted = !!opt.votedByMe;
-          // Toggle vote
+      // Cập nhật lại UI dựa trên dữ liệu mới nhất từ server
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== messageId || !msg.poll) return msg;
+
           return {
-            ...opt,
-            votedByMe: !alreadyVoted,
-            votes: alreadyVoted ? Math.max(opt.votes - 1, 0) : opt.votes + 1,
+            ...msg,
+            poll: {
+              ...msg.poll,
+              options: updatedPoll.options.map((opt: any) => ({
+                id: opt._id,
+                text: opt.text,
+                votes: opt.votes,
+                votedByMe: updatedPoll.votesByUser[userId]?.includes(opt._id),
+              })),
+              closed: updatedPoll.isClosed,
+            },
           };
-        });
-
-        return {
-          ...msg,
-          poll: {
-            ...msg.poll,
-            options: updatedOptions,
-          },
-        };
-      })
-    );
+        })
+      );
+    } catch (error) {
+      console.error("Lỗi khi thực hiện vote:", error);
+    }
   };
 
   // Hàm tạo message bình chọn mới từ dữ liệu trong composer:
   // - Cần ít nhất 1 câu hỏi + 2 lựa chọn hợp lệ.
   // - Sau khi tạo xong, reset lại state composer.
-  const handleCreatePoll = () => {
+  /**
+   * Hàm xử lý khi người dùng nhấn nút "Create Poll"
+   */
+  const handleCreatePoll = async () => {
     const trimmedQuestion = pollQuestion.trim();
+    // Lọc bỏ các phương án trống
     const cleanedOptions = pollOptionsDraft
       .map((opt) => opt.trim())
       .filter((opt) => opt.length > 0);
 
+    // Kiểm tra tính hợp lệ trước khi gửi
     if (!trimmedQuestion || cleanedOptions.length < 2) {
       return;
     }
 
-    const pollMessage: Message = {
-      id: Date.now().toString(),
-      text: "",
-      createdAt: "Now",
-      isMe: true,
-      senderName: "You",
-      poll: {
+    try {
+      // Gọi API để tạo poll trong MongoDB
+      const response = await pollApi.createPoll({
         question: trimmedQuestion,
-        options: cleanedOptions.map((text, index) => ({
-          id: `opt-${index}`,
-          text,
-          votes: 0,
-        })),
-      },
-    };
+        options: cleanedOptions.map((text) => ({ text })),
+        chatId: id || "default", // ID của phòng chat hiện tại
+        createdBy: userId,
+      });
 
-    setMessages((prev) => [...prev, pollMessage]);
-    setIsCreatingPoll(false);
-    setPollQuestion("");
-    setPollOptionsDraft(["", ""]);
+      // Lấy poll vừa được tạo thành công
+      const newPoll = response.data;
+
+      // Tạo đối tượng tin nhắn để hiển thị ngay trên UI
+      const pollMessage: Message = {
+        id: newPoll._id,
+        text: "",
+        createdAt: "Now",
+        isMe: true,
+        senderName: "You",
+        poll: {
+          question: newPoll.question,
+          options: newPoll.options.map((opt: any) => ({
+            id: opt._id,
+            text: opt.text,
+            votes: 0,
+          })),
+        },
+      };
+
+      // Đưa poll mới vào danh sách tin nhắn hiện tại
+      setMessages((prev) => [...prev, pollMessage]);
+      
+      // Đóng giao diện tạo poll và reset form
+      setIsCreatingPoll(false);
+      setPollQuestion("");
+      setPollOptionsDraft(["", ""]);
+    } catch (error) {
+      console.error("Lỗi khi tạo bình chọn:", error);
+    }
   };
 
   const handleChangePollOption = (index: number, value: string) => {
@@ -550,12 +640,19 @@ const ChatDetailScreen: React.FC = () => {
         </View>
 
         {/* Khu vực danh sách tin nhắn */}
-        <FlatList
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={stylesDetail.messagesList}
-        />
+        {isLoading ? (
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <Text style={{ marginTop: 10, color: "#6B7280" }}>Loading chats...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            contentContainerStyle={stylesDetail.messagesList}
+          />
+        )}
 
         {/* Khu vực tạo bình chọn (poll composer) nằm trên thanh nhập tin nhắn */}
         {isCreatingPoll && (

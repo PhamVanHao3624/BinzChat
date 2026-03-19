@@ -98,8 +98,9 @@ const ChatDetailScreen: React.FC = () => {
   useEffect(() => {
     loadInitialData();
 
-    // Kết nối đến server Socket.io
+    // Kết nối đến server Socket.io (localhost:4000)
     const socket = io("http://localhost:4000");
+    const chatId = id || "public-chat"; // ID mặc định nếu không có tham số
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -1475,4 +1476,10 @@ const stylesMsg = StyleSheet.create({
     color: "#E5E7EB",
   },
 });
+
+/**
+ * HOÀN TẤT TÍCH HỢP TÍNH NĂNG BÌNH CHỌN & REALTIME
+ * Phiên bản: 1.1.0
+ * Tác giả: Phạm Văn Hào
+ */
 

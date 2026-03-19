@@ -621,7 +621,7 @@ const ChatDetailScreen: React.FC = () => {
                     item.isMe && stylesMsg.pollQuestionRight,
                   ]}
                 >
-                  {item.poll.question}
+                  📊 BÌNH CHỌN: {item.poll.question}
                 </Text>
                 {item.poll.options.map((opt) => (
                   <TouchableOpacity

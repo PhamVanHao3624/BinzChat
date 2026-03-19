@@ -170,6 +170,10 @@ const ChatDetailScreen: React.FC = () => {
       console.log("Socket reconnected after", attemptNumber, "attempts");
     });
 
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
     // Lắng nghe sự kiện có người tạo poll mới
     socket.on("pollCreated", (newPoll: any) => {
       // Tránh trùng lặp nếu mình là người tạo (đã thêm local)

@@ -10,9 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Chú ý: Nếu chạy trên thiết bị Android thật, dùng 'http://10.0.2.2:4000/api'
 const API_BASE_URL = 'http://localhost:4000/api';
 
+// Khởi tạo instance axios với cấu hình cơ bản
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000, // Thời gian chờ tối đa 10 giây
+  baseURL: "http://localhost:4000/api",
+  timeout: 10000, // Thêm timeout 10 giây để tránh treo ứng dụng khi mạng chậm
   headers: {
     'Content-Type': 'application/json',
   },

@@ -785,8 +785,10 @@ const ChatDetailScreen: React.FC = () => {
         {/* Khu vực danh sách tin nhắn */}
         {isLoading ? (
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator size="large" color="#4F46E5" />
-            <Text style={{ marginTop: 10, color: "#6B7280" }}>Loading chats...</Text>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={{ marginTop: 10, color: "#6B7280", fontWeight: "500" }}>
+              Đang tải dữ liệu...
+            </Text>
           </View>
         ) : (
           <FlatList

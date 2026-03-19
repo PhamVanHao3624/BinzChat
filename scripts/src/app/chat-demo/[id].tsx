@@ -140,6 +140,7 @@ const ChatDetailScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string>("");
   // Đối tượng socket dùng để giao tiếp thời gian thực
+  // Dùng useRef để giữ instance của socket không bị khởi tạo lại khi re-render (giúp ổn định kết nối)
   const socketRef = useRef<any>(null);
 
   // Khởi tạo Socket.IO và nạp dữ liệu ban đầu

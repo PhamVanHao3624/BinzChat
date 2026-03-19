@@ -719,7 +719,8 @@ const ChatDetailScreen: React.FC = () => {
                 </Text>
                 <Text style={stylesDetail.headerSubtitle}>
                   {members ? `${members} members` : "24 members"} •{" "}
-                  {online ? `${online} online` : "8 online"}
+                  {online ? `${online} online` : "8 online"} • {" "}
+                  <Text style={{color: '#10B981', fontWeight: 'bold'}}>Realtime Active</Text>
                 </Text>
               </View>
             </View>

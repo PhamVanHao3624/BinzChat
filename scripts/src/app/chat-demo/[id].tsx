@@ -153,12 +153,13 @@ const ChatDetailScreen: React.FC = () => {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+      console.log(`[Socket] Connected to server with ID: ${socket.id}`);
       // Tham gia vào phòng của chat này để nhận thông báo có poll mới
       if (id) {
         socket.emit("joinPoll", id); // Backend dùng chung joinPoll cho cả chat room nếu cần
         // Hoặc cụ thể hơn nếu backend yêu cầu join theo tên room
         socket.emit("joinChat", id); 
+        console.log(`[Socket] Joined chat room: ${id}`);
       }
     });
 

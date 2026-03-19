@@ -161,6 +161,14 @@ const ChatDetailScreen: React.FC = () => {
       }
     });
 
+    socket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+    });
+
+    socket.on("reconnect", (attemptNumber) => {
+      console.log("Socket reconnected after", attemptNumber, "attempts");
+    });
+
     // Lắng nghe sự kiện có người tạo poll mới
     socket.on("pollCreated", (newPoll: any) => {
       // Tránh trùng lặp nếu mình là người tạo (đã thêm local)

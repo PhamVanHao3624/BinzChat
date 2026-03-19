@@ -352,6 +352,9 @@ const ChatDetailScreen: React.FC = () => {
   //   + Nếu poll không cho chọn nhiều (allowMulti = false) thì bỏ chọn các option khác.
   /**
    * Hàm xử lý khi người dùng nhấn bình chọn (Vote) một phương án
+   * 1. Gửi request lên server
+   * 2. Nhận kết quả poll đã cập nhật
+   * 3. Refresh state local để UI hiển thị số vote mới nhất
    */
   const handleVote = async (messageId: string, optionId: string) => {
     try {

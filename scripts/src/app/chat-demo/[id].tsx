@@ -49,24 +49,25 @@ type GroupNotificationInfo = {
 };
 
 // Kiểu dữ liệu cho 1 tin nhắn trong nhóm (có thể là text, có file đính kèm, hoặc có bình chọn)
+// ---------------------------------------------------------------------------------------
 type Message = {
-  id: string;
-  text: string;
-  createdAt: string; // có thể là "10:15 AM", "10:20 AM", ...
-  isMe: boolean; // true: tin nhắn của mình, false: tin nhắn của người khác
-  showTimeAbove?: string; // label thời gian nhóm, ví dụ "TODAY"
-  senderName?: string; // tên người gửi (cho group chat)
-  senderAvatarInitial?: string; // chữ cái đầu avatar
-  hasAttachment?: boolean; // message có kèm file card không
-  poll?: {
+  id: string;             // Định danh duy nhất của tin nhắn (từ MongoDB hoặc timestamp)
+  text: string;           // Nội dung văn bản (nếu có)
+  createdAt: string;       // Thời gian gửi (ví dụ "10:15 AM", "Now")
+  isMe: boolean;          // Đánh dấu tin nhắn này là của chính người dùng hiện tại
+  showTimeAbove?: string;  // Nhãn thời gian hiển thị phía trên (TODAY, YESTERDAY)
+  senderName?: string;     // Tên người gửi hiển thị cạnh bubble
+  senderAvatarInitial?: string; // Chữ cái viết tắt của avatar
+  hasAttachment?: boolean; // Cờ đánh dấu có đính kèm file hay không
+  poll?: {                 // Thông tin về cuộc bình chọn (nếu có)
     question: string;
     options: PollOption[];
     allowMulti?: boolean;
     closed?: boolean;
   };
-  meeting?: MeetingInfo;
-  reminder?: ReminderInfo;
-  groupNotification?: GroupNotificationInfo;
+  meeting?: MeetingInfo;   // Thông tin lịch họp (nếu có)
+  reminder?: ReminderInfo; // Thông tin nhắc việc (nếu có)
+  groupNotification?: GroupNotificationInfo; // Thông tin thông báo nhóm (nếu có)
 };
 
 // Dữ liệu tin nhắn giả để demo UI.

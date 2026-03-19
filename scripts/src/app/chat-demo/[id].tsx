@@ -4,7 +4,8 @@
 // - Dữ liệu tin nhắn hiện tại là mock (lưu trong state), chỉ để demo UI và logic cơ bản (chưa gọi API).
 
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -138,11 +139,93 @@ const ChatDetailScreen: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string>("");
+  // Đối tượng socket dùng để giao tiếp thời gian thực
+  const socketRef = useRef<any>(null);
 
-  // Fetch dữ liệu từ API khi màn hình được load lần đầu
+  // Khởi tạo Socket.IO và nạp dữ liệu ban đầu
   useEffect(() => {
     loadInitialData();
-  }, [id]);
+
+    // Kết nối đến server Socket.io
+    const socket = io("http://localhost:4000");
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+      // Tham gia vào phòng của chat này để nhận thông báo có poll mới
+      if (id) {
+        socket.emit("joinPoll", id); 
+        socket.emit("joinChat", id); 
+      }
+    });
+
+    // Lắng nghe sự kiện có người tạo poll mới
+    socket.on("pollCreated", (newPoll: any) => {
+      setMessages((prev) => {
+        if (prev.some(m => m.id === newPoll._id)) return prev;
+        
+        const pollMessage: Message = {
+          id: newPoll._id,
+          text: "",
+          createdAt: new Date(newPoll.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isMe: newPoll.createdBy === userId,
+          senderName: newPoll.createdBy === userId ? "You" : "User",
+          poll: {
+            question: newPoll.question,
+            options: newPoll.options.map((opt: any) => ({
+              id: opt._id,
+              text: opt.text,
+              votes: opt.votes,
+            })),
+          },
+        };
+        return [...prev, pollMessage];
+      });
+      socket.emit("joinPoll", newPoll._id);
+    });
+
+    // Lắng nghe sự kiện có người vote hoặc poll thay đổi
+    socket.on("pollUpdated", (updatedPoll: any) => {
+      setMessages((prev) => 
+        prev.map((msg) => {
+          if (msg.id !== updatedPoll._id || !msg.poll) return msg;
+          return {
+            ...msg,
+            poll: {
+              ...msg.poll,
+              options: updatedPoll.options.map((opt: any) => ({
+                id: opt._id,
+                text: opt.text,
+                votes: opt.votes,
+                votedByMe: updatedPoll.votesByUser[userId!]?.includes(opt._id),
+              })),
+              closed: updatedPoll.isClosed,
+            },
+          };
+        })
+      );
+    });
+
+    // Lắng nghe sự kiện poll bị đóng
+    socket.on("pollClosed", (closedPoll: any) => {
+      setMessages((prev) => 
+        prev.map((msg) => {
+          if (msg.id !== closedPoll._id || !msg.poll) return msg;
+          return {
+            ...msg,
+            poll: {
+              ...msg.poll,
+              closed: true,
+            },
+          };
+        })
+      );
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [id, userId]);
 
   /**
    * Hàm khởi tạo: Lấy định danh người dùng và tải danh sách poll từ MongoDB
@@ -339,6 +422,11 @@ const ChatDetailScreen: React.FC = () => {
       // Đưa poll mới vào danh sách tin nhắn hiện tại
       setMessages((prev) => [...prev, pollMessage]);
       
+      // Tham gia phòng của poll này để nhận update realtime
+      if (socketRef.current) {
+        socketRef.current.emit("joinPoll", newPoll._id);
+      }
+
       // Đóng giao diện tạo poll và reset form
       setIsCreatingPoll(false);
       setPollQuestion("");

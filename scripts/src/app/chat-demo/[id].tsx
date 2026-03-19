@@ -3,10 +3,11 @@
 // - Dùng chung cho cả 1-1 và group: tuỳ thuộc tham số truyền vào (name, members, online)
 // - Dữ liệu tin nhắn hiện tại là mock (lưu trong state), chỉ để demo UI và logic cơ bản (chưa gọi API).
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -15,10 +16,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from "react-native";
+import { io } from "socket.io-client";
 import { pollApi } from "../lib/api.service";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Kiểu dữ liệu cho 1 option trong bình chọn (poll)
 // Ví dụ 1 option: "Tomorrow morning" với số lượng vote tương ứng.
@@ -72,57 +72,7 @@ type Message = {
 
 // Dữ liệu tin nhắn giả để demo UI.
 // Khi tích hợp API thật, bạn chỉ cần thay thế MOCK_MESSAGES bằng dữ liệu từ server.
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: "1",
-    text: "Has anyone reviewed the Q3 campaign brief yet? We need to finalize the budget allocations by EOD.",
-    createdAt: "10:15 AM",
-    isMe: false,
-    senderName: "Alex Rivers",
-    senderAvatarInitial: "A",
-    showTimeAbove: "TODAY",
-  },
-  {
-    id: "2",
-    text: "Just finished looking at the assets. They look great!",
-    createdAt: "10:18 AM",
-    isMe: false,
-    senderName: "Jordan Lee",
-    senderAvatarInitial: "J",
-  },
-  {
-    id: "3",
-    text: "I've uploaded the final PDF for the strategy below. Let me know if we need changes.",
-    createdAt: "10:20 AM",
-    isMe: true,
-    senderName: "You",
-    hasAttachment: true,
-  },
-  {
-    id: "4",
-    text: "Q3_Marketing_Strategy_v2.pdf",
-    createdAt: "10:22 AM",
-    isMe: true,
-    senderName: "You",
-    hasAttachment: true,
-  },
-  {
-    id: "5",
-    text: "",
-    createdAt: "10:25 AM",
-    isMe: false,
-    senderName: "Alex Rivers",
-    senderAvatarInitial: "A",
-    poll: {
-      question: "When should we schedule the next campaign review meeting?",
-      options: [
-        { id: "o1", text: "Tomorrow morning", votes: 3 },
-        { id: "o2", text: "Tomorrow afternoon", votes: 5 },
-        { id: "o3", text: "Next Monday", votes: 2 },
-      ],
-    },
-  },
-];
+
 
 const ChatDetailScreen: React.FC = () => {
   const router = useRouter();
@@ -158,7 +108,7 @@ const ChatDetailScreen: React.FC = () => {
       if (id) {
         socket.emit("joinPoll", id); // Backend dùng chung joinPoll cho cả chat room nếu cần
         // Hoặc cụ thể hơn nếu backend yêu cầu join theo tên room
-        socket.emit("joinChat", id); 
+        socket.emit("joinChat", id);
         console.log(`[Socket] Joined chat room: ${id}`);
       }
     });
@@ -180,7 +130,7 @@ const ChatDetailScreen: React.FC = () => {
       // Tránh trùng lặp nếu mình là người tạo (đã thêm local)
       setMessages((prev) => {
         if (prev.some(m => m.id === newPoll._id)) return prev;
-        
+
         const pollMessage: Message = {
           id: newPoll._id,
           text: "",
@@ -204,7 +154,7 @@ const ChatDetailScreen: React.FC = () => {
 
     // Lắng nghe sự kiện có người vote hoặc poll thay đổi
     socket.on("pollUpdated", (updatedPoll: any) => {
-      setMessages((prev) => 
+      setMessages((prev) =>
         prev.map((msg) => {
           if (msg.id !== updatedPoll._id || !msg.poll) return msg;
           return {
@@ -226,7 +176,7 @@ const ChatDetailScreen: React.FC = () => {
 
     // Lắng nghe sự kiện poll bị đóng
     socket.on("pollClosed", (closedPoll: any) => {
-      setMessages((prev) => 
+      setMessages((prev) =>
         prev.map((msg) => {
           if (msg.id !== closedPoll._id || !msg.poll) return msg;
           return {
@@ -442,7 +392,7 @@ const ChatDetailScreen: React.FC = () => {
 
       // Đưa poll mới vào danh sách tin nhắn hiện tại
       setMessages((prev) => [...prev, pollMessage]);
-      
+
       // Tham gia phòng của poll này để nhận update realtime
       if (socketRef.current) {
         socketRef.current.emit("joinPoll", newPoll._id);
@@ -645,7 +595,7 @@ const ChatDetailScreen: React.FC = () => {
                           opt.votedByMe && stylesMsg.pollOptionTextSelected,
                         ]}
                       >
-                        {opt.text}
+                        {opt.text} {opt.votedByMe && "✔️"}
                       </Text>
                     </View>
                     <Text style={stylesMsg.pollOptionVotes}>

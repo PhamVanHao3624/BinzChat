@@ -25,6 +25,9 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   async (config) => {
+    // Ghi log request để tiện theo dõi trong quá trình phát triển
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+
     const token = await AsyncStorage.getItem('userToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

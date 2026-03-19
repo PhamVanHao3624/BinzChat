@@ -436,6 +436,29 @@ const ChatDetailScreen: React.FC = () => {
     }
   };
 
+  /**
+   * Hàm xử lý khi người tạo nhấn "Kết thúc bình chọn"
+   */
+  const handleClosePoll = async (pollId: string) => {
+    try {
+      const response = await pollApi.closePoll(pollId);
+      const closedPoll = response.data;
+
+      // Cập nhật UI local ngay lập tức
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== pollId || !msg.poll) return msg;
+          return {
+            ...msg,
+            poll: { ...msg.poll, closed: true },
+          };
+        })
+      );
+    } catch (error) {
+      console.error("Lỗi khi kết thúc poll:", error);
+    }
+  };
+
   const handleChangePollOption = (index: number, value: string) => {
     setPollOptionsDraft((prev) => {
       const next = [...prev];
@@ -608,6 +631,20 @@ const ChatDetailScreen: React.FC = () => {
                     </Text>
                   </TouchableOpacity>
                 ))}
+
+                {/* Hiển thị trạng thái hoặc nút đóng Poll */}
+                {item.poll.closed ? (
+                  <View style={stylesMsg.pollStatusBadge}>
+                    <Text style={stylesMsg.pollStatusText}>Bình chọn đã kết thúc</Text>
+                  </View>
+                ) : item.isMe ? (
+                  <TouchableOpacity
+                    style={stylesMsg.closePollButton}
+                    onPress={() => handleClosePoll(item.id)}
+                  >
+                    <Text style={stylesMsg.closePollButtonText}>Kết thúc bình chọn</Text>
+                  </TouchableOpacity>
+                ) : null}
               </>
             ) : item.meeting ? (
               <>

@@ -154,13 +154,15 @@ const ChatDetailScreen: React.FC = () => {
       console.log("Socket connected:", socket.id);
       // Tham gia vào phòng của chat này để nhận thông báo có poll mới
       if (id) {
-        socket.emit("joinPoll", id); 
+        socket.emit("joinPoll", id); // Backend dùng chung joinPoll cho cả chat room nếu cần
+        // Hoặc cụ thể hơn nếu backend yêu cầu join theo tên room
         socket.emit("joinChat", id); 
       }
     });
 
     // Lắng nghe sự kiện có người tạo poll mới
     socket.on("pollCreated", (newPoll: any) => {
+      // Tránh trùng lặp nếu mình là người tạo (đã thêm local)
       setMessages((prev) => {
         if (prev.some(m => m.id === newPoll._id)) return prev;
         
@@ -181,6 +183,7 @@ const ChatDetailScreen: React.FC = () => {
         };
         return [...prev, pollMessage];
       });
+      // Tham gia phòng cập nhật của poll mới này
       socket.emit("joinPoll", newPoll._id);
     });
 
@@ -612,6 +615,7 @@ const ChatDetailScreen: React.FC = () => {
                     style={[
                       stylesMsg.pollOption,
                       opt.votedByMe && stylesMsg.pollOptionSelected,
+                      item.poll?.closed && stylesMsg.pollOptionDisabled,
                     ]}
                     onPress={() => handleVote(item.id, opt.id)}
                     disabled={item.poll?.closed}
@@ -1430,6 +1434,36 @@ const stylesMsg = StyleSheet.create({
   pollOptionVotes: {
     fontSize: 12,
     color: "#BFDBFE",
+  },
+  pollOptionDisabled: {
+    opacity: 0.6,
+  },
+  pollStatusBadge: {
+    marginTop: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 8,
+    alignSelf: "center",
+  },
+  pollStatusText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  closePollButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    backgroundColor: "rgba(239, 68, 68, 0.2)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.5)",
+    alignItems: "center",
+  },
+  closePollButtonText: {
+    fontSize: 13,
+    color: "#FCA5A5",
+    fontWeight: "600",
   },
   meetingTitle: {
     fontSize: 14,

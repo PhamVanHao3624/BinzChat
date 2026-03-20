@@ -118,7 +118,151 @@ const MOCK_MESSAGES: Message[] = [
 ];
 
 const ChatDetailScreen: React.FC = () => {
-  return null;
+  const router = useRouter();
+
+  // Lấy tham số từ URL
+  const { id, name, members, online } = useLocalSearchParams<{
+    id: string;
+    name?: string;
+    members?: string;
+    online?: string;
+  }>();
+
+  // State chứa danh sách tin nhắn hiện tại
+  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+
+  // State nội dung đang nhập
+  const [inputValue, setInputValue] = useState("");
+
+  const initials = useMemo(() => {
+    const displayName = name || `Chat #${id}`;
+    return displayName.charAt(0).toUpperCase();
+  }, [id, name]);
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <KeyboardAvoidingView
+        style={stylesDetail.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={80}
+      >
+        {/* Header */}
+        <View style={stylesDetail.header}>
+          <TouchableOpacity
+            style={stylesDetail.headerButton}
+            onPress={() => router.back()}
+          >
+            <Text style={stylesDetail.headerButtonText}>←</Text>
+          </TouchableOpacity>
+
+          <View style={stylesDetail.headerCenter}>
+            <View style={stylesDetail.headerAvatarRow}>
+              <View style={stylesDetail.avatarCircle}>
+                <Text style={stylesDetail.avatarInitial}>{initials}</Text>
+              </View>
+              <View style={stylesDetail.headerTextBlock}>
+                <Text style={stylesDetail.headerTitle}>
+                  {name || `Chat #${id}`}
+                </Text>
+                <Text style={stylesDetail.headerSubtitle}>
+                  {members ? `${members} members` : "24 members"} •{" "}
+                  {online ? `${online} online` : "8 online"}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={stylesDetail.headerActions}>
+            <TouchableOpacity style={stylesDetail.headerIconButton}>
+              <Text style={stylesDetail.headerIconText}>📞</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={stylesDetail.headerIconButton}>
+              <Text style={stylesDetail.headerIconText}>🎥</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ flex: 1 }} />
+      </KeyboardAvoidingView>
+    </>
+  );
 };
+
+const stylesDetail = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E5E7EB",
+  },
+  headerButton: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerButtonText: {
+    fontSize: 20,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  headerAvatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  headerTextBlock: {
+    alignItems: "flex-start",
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+  headerIconText: {
+    fontSize: 18,
+  },
+});
 
 export default ChatDetailScreen;

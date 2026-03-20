@@ -139,6 +139,86 @@ const ChatDetailScreen: React.FC = () => {
     return displayName.charAt(0).toUpperCase();
   }, [id, name]);
 
+  // Hàm render từng tin nhắn trong FlatList.
+  const renderMessage = ({ item }: { item: Message }) => {
+    const containerStyle = item.isMe
+      ? [stylesMsg.messageContainer, stylesMsg.messageRight]
+      : [stylesMsg.messageContainer, stylesMsg.messageLeft];
+
+    const bubbleStyle = item.isMe
+      ? [stylesMsg.bubble, stylesMsg.bubbleRight]
+      : [stylesMsg.bubble, stylesMsg.bubbleLeft];
+
+    const textStyle = item.isMe
+      ? [stylesMsg.messageText, stylesMsg.messageTextRight]
+      : [stylesMsg.messageText, stylesMsg.messageTextLeft];
+
+    const isAttachmentCard =
+      item.hasAttachment && item.isMe && item.text.endsWith(".pdf");
+
+    return (
+      <>
+        {item.showTimeAbove ? (
+          <View style={stylesMsg.daySeparatorWrapper}>
+            <View style={stylesMsg.daySeparatorLine} />
+            <Text style={stylesMsg.daySeparatorText}>{item.showTimeAbove}</Text>
+            <View style={stylesMsg.daySeparatorLine} />
+          </View>
+        ) : null}
+
+        {!item.isMe && item.senderName ? (
+          <Text style={stylesMsg.senderLabel}>{item.senderName}</Text>
+        ) : null}
+
+        <View style={containerStyle}>
+          {!item.isMe && item.senderAvatarInitial ? (
+            <View style={stylesMsg.senderAvatar}>
+              <Text style={stylesMsg.senderAvatarText}>
+                {item.senderAvatarInitial}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={bubbleStyle}>
+            {!isAttachmentCard ? (
+              <Text style={textStyle}>{item.text}</Text>
+            ) : (
+              <>
+                <Text style={stylesMsg.messageTextRight}>
+                  Q3_Marketing_Strategy_v2.pdf
+                </Text>
+                <View style={stylesMsg.attachmentCard}>
+                  <View style={stylesMsg.attachmentIconWrapper}>
+                    <Text style={stylesMsg.attachmentIcon}>📄</Text>
+                  </View>
+                  <View style={stylesMsg.attachmentTextBlock}>
+                    <Text style={stylesMsg.attachmentTitle} numberOfLines={1}>
+                      Q3_Marketing_Strategy_v2.pdf
+                    </Text>
+                    <Text style={stylesMsg.attachmentMeta}>
+                      4.2 MB • PDF
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={stylesMsg.attachmentDownload}>
+                    <Text style={stylesMsg.attachmentDownloadText}>⬇️</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+
+          {item.isMe ? (
+            <View style={stylesMsg.senderAvatarRight}>
+              <Text style={stylesMsg.senderAvatarText}>Y</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <Text style={stylesMsg.timeLabel}>{item.createdAt}</Text>
+      </>
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -148,7 +228,7 @@ const ChatDetailScreen: React.FC = () => {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={80}
       >
-        {/* Header */}
+        {/* Header content ... (unchanged) */}
         <View style={stylesDetail.header}>
           <TouchableOpacity
             style={stylesDetail.headerButton}
@@ -184,7 +264,12 @@ const ChatDetailScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={{ flex: 1 }} />
+        <FlatList
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={stylesDetail.messagesList}
+        />
       </KeyboardAvoidingView>
     </>
   );
@@ -262,6 +347,152 @@ const stylesDetail = StyleSheet.create({
   },
   headerIconText: {
     fontSize: 18,
+  },
+  messagesList: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+});
+
+const stylesMsg = StyleSheet.create({
+  messageContainer: {
+    marginVertical: 6,
+    maxWidth: "80%",
+  },
+  messageLeft: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  messageRight: {
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  bubble: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  bubbleLeft: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    borderTopLeftRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+  },
+  bubbleRight: {
+    backgroundColor: "#2563EB",
+    borderRadius: 18,
+    borderTopRightRadius: 6,
+  },
+  messageText: {
+    fontSize: 14,
+  },
+  messageTextLeft: {
+    color: "#111827",
+  },
+  messageTextRight: {
+    color: "#FFFFFF",
+  },
+  senderLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 8,
+    marginLeft: 52,
+  },
+  senderAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  senderAvatarRight: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+  },
+  senderAvatarText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  timeLabel: {
+    marginTop: 2,
+    fontSize: 10,
+    color: "#9CA3AF",
+    alignSelf: "flex-end",
+  },
+  daySeparatorWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  daySeparatorLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#E5E7EB",
+  },
+  daySeparatorText: {
+    marginHorizontal: 12,
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  attachmentCard: {
+    marginTop: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  attachmentIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(15,23,42,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  attachmentIcon: {
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
+  attachmentTextBlock: {
+    flex: 1,
+  },
+  attachmentTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    marginBottom: 2,
+  },
+  attachmentMeta: {
+    fontSize: 11,
+    color: "#BFDBFE",
+  },
+  attachmentDownload: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 6,
+  },
+  attachmentDownloadText: {
+    fontSize: 16,
+    color: "#FFFFFF",
   },
 });
 
